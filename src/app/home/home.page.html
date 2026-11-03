@@ -1,0 +1,160 @@
+<ion-content>
+  <!-- Top Cooperative Header Bar -->
+  <div class="header-bar">
+    <div class="header-top">
+      <div>
+        <h2 style="margin: 0; font-size: 18px;">🚌 Bongabon Primemovers TSC</h2>
+        <small>Bongabon – Palayan City – Cabanatuan Terminal</small>
+      </div>
+      <div *ngIf="loggedInUser" style="display: flex; align-items: center; gap: 8px;">
+        <span class="peach-badge">👤 {{ loggedInUser.full_name }}</span>
+        <button class="pink-btn" (click)="logout()">Log Out</button>
+      </div>
+    </div>
+
+    <div class="server-bar">
+      <input
+        class="input-box"
+        style="margin: 0; flex: 1;"
+        [(ngModel)]="serverUrl"
+        placeholder="http://192.168.1.8:8000"
+      />
+      <button class="pink-btn" (click)="syncAll()">Connect</button>
+    </div>
+  </div>
+
+  <div class="page-container">
+    <!-- 1. COMMUTER LOG-IN & SIGN-UP CARD -->
+    <div class="theme-card" *ngIf="!loggedInUser">
+      <h3 class="card-title">Commuter Log-In / Sign-Up</h3>
+
+      <input class="input-box" [(ngModel)]="authUsername" placeholder="Username" />
+      <input class="input-box" type="password" [(ngModel)]="authPassword" placeholder="Password" />
+      <input class="input-box" [(ngModel)]="authFullName" placeholder="Full Name (For Sign-Up)" />
+
+      <div style="display: flex; gap: 10px; margin-top: 10px;">
+        <button type="button" class="mauve-btn" style="flex: 1;" (click)="login()">Log In</button>
+        <button type="button" class="pink-btn" style="flex: 1;" (click)="signup()">Sign Up</button>
+      </div>
+
+      <p *ngIf="authMessage" class="error-text">{{ authMessage }}</p>
+    </div>
+
+    <!-- 2. LIVE MAP, ETA & BUS CAPACITY TRACKER -->
+    <div *ngIf="loggedInUser">
+      <!-- Interactive Leaflet Map -->
+      <div id="passengerMap"></div>
+
+<!-- Waiting Stop & Destination Selector for Accurate Direction, ETA & Fare -->
+      <div class="theme-card waiting-card">
+        <h3 class="card-title" style="margin-bottom: 6px;">📍 Commuter Trip & ETA Filter</h3>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-weight: 700; font-size: 12px;">1. Waiting At (Origin Stop):</label>
+            <select class="input-box" [(ngModel)]="selectedStopId" (ngModelChange)="onStopChange()">
+              <option *ngFor="let s of stops" [ngValue]="s.stop_id">
+                {{ s.stop_name }} ({{ s.municipality }})
+              </option>
+            </select>
+          </div>
+
+          <div style="flex: 1; min-width: 200px;">
+            <label style="font-weight: 700; font-size: 12px;">2. Going To (Destination Stop):</label>
+            <select class="input-box" [(ngModel)]="destinationStopId">
+              <option *ngFor="let s of stops" [ngValue]="s.stop_id">
+                {{ s.stop_name }} ({{ s.municipality }})
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Live Trip Distance & Fare Preview for the Commuter -->
+        <div
+          *ngIf="selectedStopId !== destinationStopId"
+          style="background: #FFFFFF; padding: 8px 12px; border-radius: 10px; margin-top: 6px; font-size: 12px; border: 1px solid #B47792;"
+        >
+          🧭 <b>Trip Direction:</b> {{ getPassengerDirectionLabel() }} |
+          📏 <b>Trip Distance:</b> {{ getPassengerTripDistance().toFixed(2) }} km |
+          💵 <b>Est. Fare:</b> ₱{{ getPassengerRegularFare().toFixed(2) }}
+          (Discounted: ₱{{ (getPassengerRegularFare() * 0.8).toFixed(2) }})
+        </div>
+
+        <div class="badge-row">
+          <button
+            class="stop-chip-btn"
+            *ngFor="let s of stops"
+            (click)="focusStop(s)"
+          >
+            {{ s.stop_name }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Approaching Mini-Buses List -->
+      <h3 class="card-title">Approaching Cooperative Mini-Buses</h3>
+
+      <div class="theme-card" *ngFor="let b of buses">
+        <div class="bus-header">
+          <h3 style="margin: 0; color: #B47792; font-size: 16px;">
+            🚌 {{ b.bus_id }} — Plate: {{ b.plate_number }}
+          </h3>
+          <span
+            class="peach-badge"
+            [ngClass]="{
+              'status-available': b.status === 'Available Seats',
+              'status-standing': b.status === 'Standing Only',
+              'status-full': b.status === 'Full Capacity'
+            }"
+          >
+            {{ b.status }}
+          </span>
+        </div>
+
+        <p style="margin: 6px 0; font-size: 13px; line-height: 1.5;">
+          <b>Operator:</b> {{ b.operator_name }}<br />
+          <b>Driver:</b> {{ b.driver_name }} | <b>Conductor:</b> {{ b.conductor_name }}
+        </p>
+
+        <div class="badge-row">
+          <span class="peach-badge">⏱️ {{ computeEtaBadge(b) }}</span>
+          <span class="peach-badge">💺 Available Seats: {{ b.available_seats }} / {{ b.max_seated }}</span>
+          <span class="peach-badge">🧍 Standing: {{ b.standing_count }} / {{ b.max_standing }}</span>
+        </div>
+      </div>
+
+      <!-- 3. CATEGORIZED PASSENGER FEEDBACK & INCIDENT REPORTING -->
+      <div class="theme-card">
+        <h3 class="card-title">💬 Send Feedback / Report Concern</h3>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <select class="input-box" style="flex: 1;" [(ngModel)]="fbBusId">
+            <option *ngFor="let b of buses" [value]="b.bus_id">
+              {{ b.bus_id }} ({{ b.plate_number }})
+            </option>
+          </select>
+
+          <select class="input-box" style="flex: 1;" [(ngModel)]="fbCategory">
+            <option value="Left Item / Lost & Found">Left Item / Lost & Found</option>
+            <option value="Driver/Conductor Courtesy">Driver/Conductor Courtesy</option>
+            <option value="Overloading">Overloading</option>
+            <option value="Mechanical Delay">Mechanical Delay</option>
+          </select>
+        </div>
+
+        <textarea
+          class="input-box"
+          rows="3"
+          [(ngModel)]="fbMessage"
+          placeholder="Describe your concern or feedback..."
+        ></textarea>
+
+        <button class="mauve-btn" style="width: 100%; margin-top: 6px;" (click)="submitFeedback()">
+          Submit Report to Cooperative Dispatcher
+        </button>
+
+        <p *ngIf="fbStatus" class="success-text">{{ fbStatus }}</p>
+      </div>
+    </div>
+  </div>
+</ion-content>

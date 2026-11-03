@@ -1,0 +1,159 @@
+ion-content {
+  --background: #F8F3EA;
+  color: #2D262B;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.header-bar {
+  background: #B47792;
+  color: #FFFFFF;
+  padding: 14px 18px;
+  border-bottom: 3px solid #FA9EBC;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.server-bar {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.page-container {
+  padding: 14px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.theme-card {
+  background: #FFFFFF;
+  border: 2px solid #FA9EBC;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  color: #2D262B;
+  box-shadow: 0 3px 10px rgba(180, 119, 146, 0.12);
+}
+
+.waiting-card {
+  background: #FFDBD1;
+}
+
+.card-title {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #B47792;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.peach-badge {
+  background: #FFDBD1;
+  color: #2D262B;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  display: inline-block;
+}
+
+.status-available {
+  background: #c8e6c9;
+  color: #1b5e20;
+}
+
+.status-standing {
+  background: #ffe0b2;
+  color: #e65100;
+}
+
+.status-full {
+  background: #ffcdd2;
+  color: #b71c1c;
+}
+
+.pink-btn {
+  background: #FA9EBC;
+  color: #2D262B;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mauve-btn {
+  background: #B47792;
+  color: #FFFFFF;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stop-chip-btn {
+  background: #FA9EBC;
+  color: #2D262B;
+  border: 1px solid #B47792;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.input-box {
+  width: 100%;
+  padding: 9px 12px;
+  margin: 5px 0;
+  border: 1.5px solid #B47792;
+  border-radius: 8px;
+  background: #F8F3EA;
+  color: #2D262B;
+  box-sizing: border-box;
+}
+
+#passengerMap {
+  height: 350px;
+  width: 100%;
+  border-radius: 14px;
+  border: 2px solid #B47792;
+  margin-bottom: 14px;
+  z-index: 1;
+}
+
+.bus-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.error-text {
+  color: #c62828;
+  font-size: 13px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.success-text {
+  color: #2e7d32;
+  font-size: 13px;
+  margin-top: 8px;
+  font-weight: 600;
+}
