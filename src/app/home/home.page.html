@@ -6,10 +6,12 @@
         <h2 style="margin: 0; font-size: 18px;">🚌 Bongabon Primemovers TSC</h2>
         <small>Bongabon – Palayan City – Cabanatuan Terminal</small>
       </div>
-      <div *ngIf="loggedInUser" style="display: flex; align-items: center; gap: 8px;">
-        <span class="peach-badge">👤 {{ loggedInUser.full_name }}</span>
-        <button class="pink-btn" (click)="logout()">Log Out</button>
-      </div>
+      @if (loggedInUser) {
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="peach-badge">👤 {{ loggedInUser.full_name }}</span>
+          <button class="pink-btn" (click)="logout()">Log Out</button>
+        </div>
+      }
     </div>
 
     <div class="server-bar">
@@ -17,7 +19,7 @@
         class="input-box"
         style="margin: 0; flex: 1;"
         [(ngModel)]="serverUrl"
-        placeholder="http://192.168.1.8:8000"
+        placeholder="http://192.168.1.6:8000"
       />
       <button class="pink-btn" (click)="syncAll()">Connect</button>
     </div>
@@ -25,7 +27,8 @@
 
   <div class="page-container">
     <!-- 1. COMMUTER LOG-IN & SIGN-UP CARD -->
-    <div class="theme-card" *ngIf="!loggedInUser">
+    @if (!loggedInUser) {
+    <div class="theme-card">
       <h3 class="card-title">Commuter Log-In / Sign-Up</h3>
 
       <input class="input-box" [(ngModel)]="authUsername" placeholder="Username" />
@@ -37,11 +40,14 @@
         <button type="button" class="pink-btn" style="flex: 1;" (click)="signup()">Sign Up</button>
       </div>
 
-      <p *ngIf="authMessage" class="error-text">{{ authMessage }}</p>
+      @if (authMessage) {
+      <p class="error-text">{{ authMessage }}</p>
+      }
     </div>
+    }
 
     <!-- 2. LIVE MAP, ETA & BUS CAPACITY TRACKER -->
-    <div *ngIf="loggedInUser">
+    @if (loggedInUser) {
       <!-- Interactive Leaflet Map -->
       <div id="passengerMap"></div>
 
@@ -51,50 +57,54 @@
 
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <div style="flex: 1; min-width: 200px;">
-            <label style="font-weight: 700; font-size: 12px;">1. Waiting At (Origin Stop):</label>
-            <select class="input-box" [(ngModel)]="selectedStopId" (ngModelChange)="onStopChange()">
-              <option *ngFor="let s of stops" [ngValue]="s.stop_id">
-                {{ s.stop_name }} ({{ s.municipality }})
-              </option>
+            <label for="origin-stop" style="font-weight: 700; font-size: 12px;">1. Waiting At (Origin Stop):</label>
+            <select id="origin-stop" class="input-box" [(ngModel)]="selectedStopId" (ngModelChange)="onStopChange()">
+              @for (s of stops; track s.stop_id) {
+                <option [ngValue]="s.stop_id">
+                  {{ s.stop_name }} ({{ s.municipality }})
+                </option>
+              }
             </select>
           </div>
 
           <div style="flex: 1; min-width: 200px;">
-            <label style="font-weight: 700; font-size: 12px;">2. Going To (Destination Stop):</label>
-            <select class="input-box" [(ngModel)]="destinationStopId">
-              <option *ngFor="let s of stops" [ngValue]="s.stop_id">
-                {{ s.stop_name }} ({{ s.municipality }})
-              </option>
+            <label for="destination-stop" style="font-weight: 700; font-size: 12px;">2. Going To (Destination Stop):</label>
+            <select id="destination-stop" class="input-box" [(ngModel)]="destinationStopId">
+              @for (s of stops; track s.stop_id) {
+                <option [ngValue]="s.stop_id">
+                  {{ s.stop_name }} ({{ s.municipality }})
+                </option>
+              }
             </select>
           </div>
         </div>
 
         <!-- Live Trip Distance & Fare Preview for the Commuter -->
-        <div
-          *ngIf="selectedStopId !== destinationStopId"
-          style="background: #FFFFFF; padding: 8px 12px; border-radius: 10px; margin-top: 6px; font-size: 12px; border: 1px solid #B47792;"
-        >
-          🧭 <b>Trip Direction:</b> {{ getPassengerDirectionLabel() }} |
-          📏 <b>Trip Distance:</b> {{ getPassengerTripDistance().toFixed(2) }} km |
-          💵 <b>Est. Fare:</b> ₱{{ getPassengerRegularFare().toFixed(2) }}
-          (Discounted: ₱{{ (getPassengerRegularFare() * 0.8).toFixed(2) }})
-        </div>
+        @if (selectedStopId !== destinationStopId) {
+          <div
+            style="background: #FFFFFF; padding: 8px 12px; border-radius: 10px; margin-top: 6px; font-size: 12px; border: 1px solid #B47792;"
+          >
+            🧭 <b>Trip Direction:</b> {{ getPassengerDirectionLabel() }} |
+            📏 <b>Trip Distance:</b> {{ getPassengerTripDistance().toFixed(2) }} km |
+            💵 <b>Est. Fare:</b> ₱{{ getPassengerRegularFare().toFixed(2) }}
+            (Discounted: ₱{{ (getPassengerRegularFare() * 0.8).toFixed(2) }})
+          </div>
+        }
 
         <div class="badge-row">
-          <button
-            class="stop-chip-btn"
-            *ngFor="let s of stops"
-            (click)="focusStop(s)"
-          >
-            {{ s.stop_name }}
-          </button>
+          @for (s of stops; track s.stop_id) {
+            <button class="stop-chip-btn" (click)="focusStop(s)">
+              {{ s.stop_name }}
+            </button>
+          }
         </div>
       </div>
 
       <!-- Approaching Mini-Buses List -->
       <h3 class="card-title">Approaching Cooperative Mini-Buses</h3>
 
-      <div class="theme-card" *ngFor="let b of buses">
+      @for (b of buses; track b.bus_id) {
+      <div class="theme-card">
         <div class="bus-header">
           <h3 style="margin: 0; color: #B47792; font-size: 16px;">
             🚌 {{ b.bus_id }} — Plate: {{ b.plate_number }}
@@ -122,6 +132,7 @@
           <span class="peach-badge">🧍 Standing: {{ b.standing_count }} / {{ b.max_standing }}</span>
         </div>
       </div>
+      }
 
       <!-- 3. CATEGORIZED PASSENGER FEEDBACK & INCIDENT REPORTING -->
       <div class="theme-card">
@@ -129,9 +140,11 @@
 
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <select class="input-box" style="flex: 1;" [(ngModel)]="fbBusId">
-            <option *ngFor="let b of buses" [value]="b.bus_id">
-              {{ b.bus_id }} ({{ b.plate_number }})
-            </option>
+            @for (b of buses; track b.bus_id) {
+              <option [value]="b.bus_id">
+                {{ b.bus_id }} ({{ b.plate_number }})
+              </option>
+            }
           </select>
 
           <select class="input-box" style="flex: 1;" [(ngModel)]="fbCategory">
@@ -153,8 +166,10 @@
           Submit Report to Cooperative Dispatcher
         </button>
 
-        <p *ngIf="fbStatus" class="success-text">{{ fbStatus }}</p>
+        @if (fbStatus) {
+          <p class="success-text">{{ fbStatus }}</p>
+        }
       </div>
-    </div>
+    }
   </div>
 </ion-content>

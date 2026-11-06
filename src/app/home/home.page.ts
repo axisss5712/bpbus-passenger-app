@@ -1,5 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import type { OnDestroy, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IonContent } from '@ionic/angular';
 import * as L from 'leaflet';
@@ -12,7 +13,17 @@ import * as L from 'leaflet';
   imports: [CommonModule, FormsModule, IonContent],
 })
 export class HomePage implements OnInit, OnDestroy {
-  serverUrl: string = 'http://192.168.1.8:8000';
+  serverUrl: string = 'http://192.168.1.6:8000';
+  ngOnInit(): void {
+    const savedIp = localStorage.getItem('custom_server_url');
+    if (savedIp) {
+      this.serverUrl = savedIp;
+    }
+  }
+  updateServerUrl(newUrl: string): void {
+    this.serverUrl = newUrl.trim();
+    localStorage.setItem('custom_server_url', this.serverUrl);
+  }
   loggedInUser: any = null;
 
   authUsername: string = '';
@@ -38,18 +49,20 @@ export class HomePage implements OnInit, OnDestroy {
   private routePolyline?: L.Polyline;
   private pollTimer?: any;
 
-  ngOnInit(): void {}
-
   ngOnDestroy(): void {
     if (this.pollTimer) {
       clearInterval(this.pollTimer);
     }
   }
 
-async login(): Promise<void> {
+  async login(): Promise<void> {
     this.authMessage = '';
     const uname = this.authUsername.trim();
     const pword = this.authPassword.trim();
+    this.serverUrl = this.serverUrl.trim().replace(/\/+$/, '');
+    if (!this.serverUrl.startsWith('http://') && !this.serverUrl.startsWith('https://')) {
+      this.serverUrl = 'http://' + this.serverUrl;
+    }
     if (!uname || !pword) {
       this.authMessage = 'Please enter your username and password.';
       return;
@@ -76,7 +89,7 @@ async login(): Promise<void> {
         this.pollTimer = setInterval(() => this.syncBuses(), 2500);
       }, 250);
     } catch {
-      this.authMessage = 'Cannot connect to Ubuntu server. Check IP and port.';
+      this.authMessage = 'Cannot connect to server. Check IP and port.';
     }
   }
 
@@ -85,6 +98,10 @@ async login(): Promise<void> {
     const uname = this.authUsername.trim();
     const pword = this.authPassword.trim();
     const fname = this.authFullName.trim() || uname;
+    this.serverUrl = this.serverUrl.trim().replace(/\/+$/, '');
+    if (!this.serverUrl.startsWith('http://') && !this.serverUrl.startsWith('https://')) {
+      this.serverUrl = 'http://' + this.serverUrl;
+    }
     if (!uname || !pword) {
       this.authMessage = 'Please enter a username and password to sign up.';
       return;
@@ -105,7 +122,6 @@ async login(): Promise<void> {
         this.authMessage = data.detail || 'Sign-up failed.';
         return;
       }
-      // Log in directly using the newly created account
       this.loggedInUser = data;
       setTimeout(() => {
         this.initMap();
@@ -113,7 +129,7 @@ async login(): Promise<void> {
         this.pollTimer = setInterval(() => this.syncBuses(), 2500);
       }, 250);
     } catch {
-      this.authMessage = 'Cannot connect to Ubuntu server. Check IP and port.';
+      this.authMessage = 'Cannot connect to server. Check IP and port.';
     }
   }
 
@@ -131,10 +147,19 @@ async login(): Promise<void> {
 
   initMap(): void {
     if (this.map) return;
-    this.map = L.map('passengerMap').setView([15.5565427, 121.0925970], 11);
+    
+    // Set logical zoom bounds so it cannot zoom out into multiple worlds
+    this.map = L.map('passengerMap', {
+      minZoom: 10,  // Prevents zooming out past regional view
+      maxZoom: 18,  // Prevents over-zooming
+    }).setView([15.5565427, 121.0925970], 11);
+
+    // noWrap: true stops the map from repeating horizontally
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
+      noWrap: true,
     }).addTo(this.map);
+
     setTimeout(() => this.map?.invalidateSize(), 200);
   }
 
@@ -188,7 +213,6 @@ async login(): Promise<void> {
       const res = await fetch(`${this.serverUrl}/api/buses`);
       const incomingBuses: any[] = await res.json();
 
-      // Calculate movement direction vector for each bus before updating state
       incomingBuses.forEach((b) => {
         const curLat = Number(b.lat);
         const curLng = Number(b.lng);
@@ -285,22 +309,14 @@ async login(): Promise<void> {
     const curLat = Number(b.lat);
     const curLng = Number(b.lng);
     const stopLat = Number(origin.lat);
-    const stopLng = Number(origin.lng);
 
-    const dist = this.haversineKm(curLat, curLng, stopLat, stopLng);
+    const dist = this.haversineKm(curLat, curLng, stopLat, Number(origin.lng));
 
-    // 1. If the bus is right at the passenger's waiting stop (within 150m)
     if (dist <= 0.15) {
       return `At ${origin.stop_name} now`;
     }
 
-    // Determine passenger's desired travel direction:
-    // true = Southbound (Bongabon -> Cabanatuan, latitude decreases)
-    // false = Northbound (Cabanatuan -> Bongabon, latitude increases)
     const passengerGoingSouth = !dest || dest.stop_order >= origin.stop_order;
-
-    // 2. Check if the bus has already passed the waiting stop based on corridor geography
-    // Along Bongabon -> Cabanatuan, northern stops have higher latitude than southern stops
     const busIsSouthOfOrigin = curLat < stopLat - 0.0012;
     const busIsNorthOfOrigin = curLat > stopLat + 0.0012;
 
@@ -308,29 +324,46 @@ async login(): Promise<void> {
     const hasMoved = vec && (Math.abs(vec.dLat) > 0.00001 || Math.abs(vec.dLng) > 0.00001);
 
     if (hasMoved) {
-      const busGoingSouth = vec.dLat < 0; // Latitude decreasing = heading to Cabanatuan
-
-      // Check if bus is heading the opposite direction of the passenger's trip
+      const busGoingSouth = vec.dLat < 0;
       if (dest && origin.stop_id !== dest.stop_id && busGoingSouth !== passengerGoingSouth) {
         const oppositeLabel = busGoingSouth ? 'Bound for Cabanatuan' : 'Bound for Bongabon';
         return `Opposite Direction (${oppositeLabel} • ${dist.toFixed(1)} km away)`;
       }
     }
 
-    // Check if the bus is already past the waiting stop along the passenger's travel direction
     if ((passengerGoingSouth && busIsSouthOfOrigin) || (!passengerGoingSouth && busIsNorthOfOrigin)) {
       return `Already Passed ${origin.stop_name} (${dist.toFixed(1)} km downstream)`;
     }
 
-    // 3. Bus is upstream and heading toward the passenger's waiting stop!
     const mins = Math.max(1, Math.round((dist / 28.0) * 60));
     const dirTag = passengerGoingSouth ? 'Bound for Cabanatuan' : 'Bound for Bongabon';
     return `Arriving in ~${mins} mins (${dist.toFixed(1)} km away • ${dirTag})`;
   }
 
-    // 3. Fallback before first GPS movement tick is recorded
-    const mins = Math.max(1, Math.round((dist / 28.0) * 60));
-    return `Arriving in ~${mins} mins (${dist.toFixed(1)} km away)`;
+  getSortedBuses(): any[] {
+    if (!this.buses) return [];
+    const origin = this.stops.find((s) => s.stop_id === Number(this.selectedStopId)) || this.stops[0];
+    const dest = this.stops.find((s) => s.stop_id === Number(this.destinationStopId));
+    if (!origin) return this.buses;
+
+    const passengerGoingSouth = !dest || dest.stop_order >= origin.stop_order;
+
+    return [...this.buses].sort((a, b) => {
+      const curLatA = Number(a.lat);
+      const curLatB = Number(b.lat);
+      const stopLat = Number(origin.lat);
+
+      const aPassed = (passengerGoingSouth && curLatA < stopLat - 0.0012) || (!passengerGoingSouth && curLatA > stopLat + 0.0012);
+      const bPassed = (passengerGoingSouth && curLatB < stopLat - 0.0012) || (!passengerGoingSouth && curLatB > stopLat + 0.0012);
+
+      if (aPassed !== bPassed) {
+        return aPassed ? 1 : -1;
+      }
+
+      const distA = this.haversineKm(curLatA, Number(a.lng), stopLat, Number(origin.lng));
+      const distB = this.haversineKm(curLatB, Number(b.lng), stopLat, Number(origin.lng));
+      return distA - distB;
+    });
   }
 
   async submitFeedback(): Promise<void> {
